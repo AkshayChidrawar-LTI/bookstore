@@ -8,7 +8,6 @@ import pyspark.sql.functions as F
 import pyspark.sql.types as T
 import os
 import gc
-# %pip install -r requirements.txt
 
 # COMMAND ----------
 
@@ -16,10 +15,13 @@ def get_path(*args):
   return os.path.join(*args)
 
 def get_sloc(item):
-    return item.replace('.','/')
+  return item.replace('.','/')
 
 def get_fname(item):
-    return item.replace('.','_')
+  return item.replace('.','_')
+
+def get_bucketlink(bucket_name):
+  return 's3://'+ bucket_name + '/'
 
 # COMMAND ----------
 
@@ -94,7 +96,7 @@ def save_script(file_name,script):
 
 def remove_script(file_name):
     os.remove(file_name)
-    print(f"\nBelow script is removed: \n'{file_name}'")
+    print(f"Script removed: '{file_name}'")
 
 def generate_CREATE_scripts(object_type,object_name,object_loc,object_ddl,**kwargs):
     host = kwargs.get('host')

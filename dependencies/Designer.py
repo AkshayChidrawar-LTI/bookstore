@@ -43,7 +43,7 @@ class ProjectSetup:
         path_schema = self.dict_repo['path_schema']
         host        = self.dict_meta['host']
         token       = self.dict_meta['token']
-        root        = 's3://'+self.dict_meta['root']+'/'
+        root        = get_bucketlink(self.dict_meta['root'])
         buckets     = self.dict_meta['buckets']
         dwh_structure=self.dict_meta['dwh_structure']
 
@@ -59,7 +59,7 @@ class ProjectSetup:
 
             object_type = 'storage_credential'
             object_name = 'sc_'+bucket_name
-            object_loc = ''
+            object_loc = get_bucketlink(bucket_name)
             object_ddl_CREATE = get_path(path_ddl_storage_credentials,object_name+'_CREATE'+'.py')
             object_ddl_DROP = get_path(path_ddl_storage_credentials,object_name+'_DROP'+'.py')
             generate_CREATE_scripts(object_type,object_name,object_loc,object_ddl_CREATE,host=host,token=token,bucket_arn=bucket_arn)
@@ -68,7 +68,7 @@ class ProjectSetup:
 
             object_type = 'external_location'
             object_name = 'el_' + bucket_name
-            object_loc = 's3://'+ bucket_name + '/'
+            object_loc = get_bucketlink(bucket_name)
             object_ddl_CREATE = get_path(path_ddl_external_locations,object_name+'_CREATE'+'.py')
             object_ddl_DROP = get_path(path_ddl_external_locations,object_name+'_DROP'+'.py')
             el_sc = 'sc_'+bucket_name
@@ -107,7 +107,7 @@ class ProjectSetup:
                 generate_CREATE_scripts(object_type,object_name,object_loc,object_ddl_CREATE,table_schema=table_schema)
                 generate_DROP_scripts(object_type,object_name,object_ddl_DROP)
                 addto_Tracker(self,object_type,object_name,object_loc,object_ddl_CREATE,object_ddl_DROP,object_properties={"schema": table_schema})
-        print(f"\nSCRIPT GENERATION COMPLETED: CREATE and DROP")
+        print(f"\nALL SCRIPTS GENERATED: CREATE and DROP")
 
     def CreateObjects(self):
         sortedTracker = self.get_ObjectsTracker(AscFlag=False)
@@ -116,13 +116,16 @@ class ProjectSetup:
             object_name = item['object_name']
             object_ddl_CREATE = item['object_ddl_CREATE']
             exec(open(object_ddl_CREATE).read())
-        print(f"\nSCRIPT EXECUTION COMPLETED: CREATE")
+        print(f"\nALL OBJECTS CREATED.")
 
-    def DropObjects(self):
+    def DropObjectsAndScripts(self):
         sortedTracker = self.get_ObjectsTracker(AscFlag=True)
         for _,item in sortedTracker.iterrows():
             object_type = item['object_type']
             object_name = item['object_name']
+            object_ddl_CREATE = item['object_ddl_CREATE']
             object_ddl_DROP = item['object_ddl_DROP']
             exec(open(object_ddl_DROP).read())
-        print(f"\nSCRIPT EXECUTION COMPLETED: DROP")
+            remove_script(object_ddl_CREATE)
+            remove_script(object_ddl_DROP)
+        print(f"\nALL OBJECTS DROPPED AND SCRIPTS REMOVED.")

@@ -20,6 +20,6 @@ bookstore.CreateObjects()
 
 # COMMAND ----------
 
-bookstore.DropObjects()
+bookstore.DropObjectsAndScripts()
 del bookstore
 gc.collect()

@@ -1,0 +1,28 @@
+catalog: "ct_bookstore"
+database: "db_silver"
+table: "tbl_books"
+format: "delta"
+primary_key: []
+partition_by: []
+columns:
+  - name: book_id
+    type: string
+    nullable: false
+  - name: title
+    type: string
+    nullable: true
+  - name: author
+    type: string
+    nullable: true
+  - name: price
+    type: double
+    nullable: true
+  - name: isactive
+    type: boolean
+    nullable: false
+  - name: start_date
+    type: timestamp
+    nullable: false
+  - name: end_date
+    type: timestamp
+    nullable: true

@@ -1,0 +1,5 @@
+%text
+yaml
+databricks-sdk
+pandas
+pyspark

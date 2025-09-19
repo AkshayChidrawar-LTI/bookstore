@@ -1,0 +1,12 @@
+project:
+  reponame: "bookstore"
+  workspacehome: "/Workspace/Users/akshay.chidrawar@ltimindtree.com/"
+path:
+  config: "config/"
+  dependencies: "dependencies/"
+  schema: "schema/"
+  ddl: "ddl/"  
+  etl: "etl/"
+  dq: "dq/"
+  
+  

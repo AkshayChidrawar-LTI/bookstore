@@ -1,0 +1,37 @@
+catalog: "ct_bookstore"
+database: "db_silver"
+table: "tbl_orders"
+format: "delta"
+primary_key: []
+partition_by: []
+columns:
+  - name: order_id
+    type: string
+    nullable: false
+  - name: order_timestamp
+    type: timestamp
+    nullable: true
+  - name: customer_id
+    type: string
+    nullable: false
+  - name: quantity
+    type: bigint
+    nullable: false
+  - name: total
+    type: bigint
+    nullable: false
+  - name: books
+    type: array
+    nullable: false
+    item:
+      type: struct
+      columns:
+        - name: book_id
+          type: STRING
+          nullable: true
+        - name: quantity
+          type: bigint
+          nullable: true
+        - name: subtotal
+          type: bigint
+          nullable: true

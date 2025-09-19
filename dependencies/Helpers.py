@@ -186,7 +186,3 @@ except Exception as e:
 """
     save_script(object_ddl,script)
     print(f"\nBelow script generated to DROP {object_type} '{object_name}'. \n'{object_ddl}'")
-
-# COMMAND ----------
-
-#print

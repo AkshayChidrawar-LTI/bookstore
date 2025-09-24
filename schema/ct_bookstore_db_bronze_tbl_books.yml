@@ -1,0 +1,23 @@
+catalog: "ct_bookstore"
+database: "db_bronze"
+table: "tbl_books"
+location: ""
+format: "delta"
+primary_key: []
+partition_by: []
+columns:
+  - name: book_id
+    type: string
+    nullable: false
+  - name: title
+    type: string
+    nullable: true
+  - name: author
+    type: string
+    nullable: true
+  - name: price
+    type: double
+    nullable: true
+  - name: updated
+    type: timestamp
+    nullable: true

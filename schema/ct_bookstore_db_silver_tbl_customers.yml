@@ -1,6 +1,8 @@
+#used in SCD Type1. Thus, contains different set of columns compared to bronze table. 
 catalog: "ct_bookstore"
 database: "db_silver"
 table: "tbl_customers"
+location: ""
 format: "delta"
 primary_key: []
 partition_by: []

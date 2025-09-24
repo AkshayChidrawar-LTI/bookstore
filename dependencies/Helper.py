@@ -1,4 +1,6 @@
 # Databricks notebook source
+import os
+import gc
 import yaml
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.catalog import AwsIamRole
@@ -6,8 +8,8 @@ import pandas as pd
 import re
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
-import os
-import gc
+from pyspark.sql.window import Window
+spark.conf.set("spark.sql.session.timeZone","Asia/Kolkata")
 
 # COMMAND ----------
 
@@ -29,7 +31,6 @@ def addto_Tracker(
     self
     ,object_type: str
     ,object_name: str
-    ,object_loc: str
     ,object_ddl_CREATE: str
     ,object_ddl_DROP: str
     ,**kwargs
@@ -40,7 +41,6 @@ def addto_Tracker(
         ,pd.DataFrame([{
             "object_type": object_type
             ,"object_name": object_name
-            ,"object_loc": object_loc
             ,"object_ddl_CREATE": object_ddl_CREATE
             ,"object_ddl_DROP": object_ddl_DROP
             ,"object_properties": object_properties
@@ -59,7 +59,7 @@ def get_sortedTracker(
         ,categories=list_of_objects
         ,ordered=True
         )
-    sortedTracker.sort_values(["object_type","object_name"],ascending=AscFlag,inplace=True)
+    sortedTracker.sort_values(["object_type","object_name"],ascending=[AscFlag,True],inplace=True)
     return sortedTracker
 
 # COMMAND ----------
@@ -98,12 +98,14 @@ def remove_script(file_name):
     os.remove(file_name)
     print(f"Script removed: '{file_name}'")
 
-def generate_CREATE_scripts(object_type,object_name,object_loc,object_ddl,**kwargs):
-    host = kwargs.get('host')
-    token = kwargs.get('token')
-    bucket_arn = kwargs.get('bucket_arn')
-    el_sc = kwargs.get('el_sc')
-    table_schema = kwargs.get('table_schema')
+def generate_CREATE_scripts(object_type,object_name,object_ddl,**kwargs):
+    host = kwargs.get('host','')
+    token = kwargs.get('token','')
+    bucket_arn = kwargs.get('bucket_arn','')
+    el_loc = kwargs.get('el_loc','')
+    el_sc = kwargs.get('el_sc','')
+    table_loc = kwargs.get('table_loc','')
+    table_schema = kwargs.get('table_schema','')
 
     if object_type == 'storage_credential':
         script = f"""
@@ -113,7 +115,7 @@ try:
         name='{object_name}',
         aws_iam_role=AwsIamRole(role_arn='{bucket_arn}')
         )
-    print(f"\\nSuccess: CREATE {object_type} '{object_name}': \\n'{object_loc}'")
+    print(f"\\nSuccess: CREATE {object_type} '{object_name}'")
 except Exception as e:
     print(f"\\nFailure: CREATE {object_type} '{object_name}': \\n{{e}}")
 """
@@ -123,26 +125,29 @@ ws = WorkspaceClient(host='{host}',token = '{token}')
 try:
     ws.external_locations.create(
         name='{object_name}'
-        ,url='{object_loc}'
+        ,url='{el_loc}'
         ,credential_name='{el_sc}'
         )
-    print(f"\\nSuccess: CREATE {object_type} '{object_name}': \\n'{object_loc}'")
+    print(f"\\nSuccess: CREATE {object_type} '{object_name}': \\n'{el_loc}'")
 except Exception as e:
     print(f"\\nFailure: CREATE {object_type} '{object_name}': \\n{{e}}")
 """
     elif object_type in ['CATALOG','DATABASE','TABLE']:
         script_ddl_create = f"CREATE {object_type} {object_name}"
-        if object_type =='TABLE'and table_schema:
-            script_ddl_schema = f"\n{table_schema}"
-            script_ddl_location = f"\nLOCATION '{object_loc}';\n"
         if object_type in ['CATALOG','DATABASE']:
             script_ddl_schema = ''
-            script_ddl_location = f"\nMANAGED LOCATION '{object_loc}';\n"
+            script_ddl_location = ''
+        elif object_type =='TABLE'and table_schema:
+            script_ddl_schema = f"\n{table_schema}"
+            if table_loc:
+                script_ddl_location = f"\nLOCATION '{table_loc}';\n"
+            else:
+                script_ddl_location = ''
         script_ddl = script_ddl_create+script_ddl_schema+script_ddl_location
         script = f"""
 try:
     spark.sql(f\"\"\"{script_ddl}\"\"\")
-    print(f"\\nSuccess: CREATE {object_type} '{object_name}': \\n'{object_loc}'")
+    print(f"\\nSuccess: CREATE {object_type} '{object_name}': \\n'{table_loc}'")
 except Exception as e:
     print(f"\\nFailure: CREATE {object_type} '{object_name}': \\n{{e}}")
 """
@@ -176,7 +181,7 @@ except Exception as e:
             cascade = 'CASCADE'
         elif object_type in ['TABLE']:
             cascade = ''
-        script_ddl = f"DROP {object_type} {object_name} {cascade}"
+        script_ddl = f"DROP {object_type} IF EXISTS {object_name} {cascade}"
         script = f"""
 try:
     spark.sql(f\"\"\"{script_ddl}\"\"\")

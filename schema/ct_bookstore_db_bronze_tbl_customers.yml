@@ -1,0 +1,35 @@
+catalog: "ct_bookstore"
+database: "db_bronze"
+table: "tbl_customers"
+location: ""
+format: "delta"
+primary_key: []
+partition_by: []
+columns:
+  - name: customer_id
+    type: string
+    nullable: false
+  - name: email
+    type: string
+    nullable: true
+  - name: first_name
+    type: string
+    nullable: true
+  - name: last_name
+    type: string
+    nullable: true
+  - name: gender
+    type: string
+    nullable: true
+  - name: city
+    type: string
+    nullable: true
+  - name: country
+    type: string
+    nullable: true
+  - name: row_status
+    type: string
+    nullable: true
+  - name: row_time 
+    type: timestamp
+    nullable: true

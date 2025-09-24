@@ -1,6 +1,8 @@
+#not used in SCD. Thus, does not contain any additional columns compared to bronze table. 
 catalog: "ct_bookstore"
 database: "db_silver"
 table: "tbl_orders"
+location: ""
 format: "delta"
 primary_key: []
 partition_by: []

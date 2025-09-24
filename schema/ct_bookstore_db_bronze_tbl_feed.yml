@@ -1,0 +1,7 @@
+catalog: "ct_bookstore"
+database: "db_bronze"
+table: "tbl_feed"
+location: "s3://bookstorerawdata/feed_batch/"
+format: "json"
+primary_key: []
+partition_by: []

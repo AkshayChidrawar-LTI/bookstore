@@ -1,0 +1,14 @@
+feed:
+  path: "s3://bookstorerawdata/feed_batch/"
+  schema: "key BINARY, value BINARY, topic STRING, partition LONG, offset LONG, timestamp long"
+
+topics:
+  - name: "books"
+    schema: "book_id STRING, title STRING, author STRING, price DOUBLE, updated TIMESTAMP"
+    BronzeTbl: "ct_bookstore.db_bronze.tbl_books"
+  - name: "customers"
+    schema: "customer_id STRING, email STRING, first_name STRING, last_name STRING, gender STRING, city STRING, country_code STRING, row_status STRING, row_time timestamp"
+    BronzeTbl: "ct_bookstore.db_bronze.tbl_customers"
+  - name: "orders"
+    schema: "order_id STRING, order_timestamp timestamp, customer_id STRING, quantity BIGINT, total BIGINT, books ARRAY<STRUCT<book_id STRING, quantity BIGINT, subtotal BIGINT>>"
+    BronzeTbl: "ct_bookstore.db_bronze.tbl_orders"

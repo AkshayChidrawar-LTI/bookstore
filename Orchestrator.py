@@ -4,15 +4,16 @@
 # COMMAND ----------
 
 bookstore = ProjectSetup(
-    'bookstore'
+    ProjectName='bookstore'
     ,repository_file='/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/config/repository.yml'
     ,metadata_file = '/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/config/metadata.yml'
+    ,logFileName = '/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/logs/bookstore.log'
 )
 
 # COMMAND ----------
 
 bookstore.GenerateScripts()
-display(bookstore.get_ObjectsTracker(AscFlag=False))
+display(bookstore.objects_tracker)
 
 # COMMAND ----------
 

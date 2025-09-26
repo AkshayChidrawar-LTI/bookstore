@@ -4,6 +4,8 @@ project:
   token: "dapi269ac03c813a54aa5c3ceb72e67a0c3b"
   root: "bookstoredatabricks"
 
+objects_tracker: "/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/schema/workspace_default_objects_tracker.yml"
+
 buckets:
   - type: "rawdata"
     name: "bookstorerawdata"
@@ -19,3 +21,8 @@ dwh_structure:
         - name: "db_bronze"
         - name: "db_silver"
         - name: "db_gold"
+
+table_schemas:
+  - name: "ct_bookstore_db_silver_tbl_books.yml"
+  - name: "ct_bookstore_db_silver_tbl_customers.yml"
+  - name: "ct_bookstore_db_silver_tbl_orders.yml"

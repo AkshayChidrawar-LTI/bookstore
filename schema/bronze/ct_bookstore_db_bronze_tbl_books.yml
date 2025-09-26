@@ -1,7 +1,6 @@
 catalog: "ct_bookstore"
 database: "db_bronze"
 table: "tbl_books"
-location: ""
 format: "delta"
 primary_key: []
 partition_by: []

@@ -1,0 +1,18 @@
+catalog: "workspace"
+database: "default"
+table: "objects_tracker"
+primary_key: []
+partition_by: []
+columns:
+  - name: object_type
+    type: string
+    nullable: false
+  - name: object_name
+    type: string
+    nullable: false
+  - name: object_ddl_CREATE
+    type: string
+    nullable: true
+  - name: object_ddl_DROP
+    type: string
+    nullable: true

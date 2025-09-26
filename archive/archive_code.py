@@ -382,3 +382,63 @@ def Generate_DROP_scripts(self):
             elif object_type in ['CATALOG','DATABASE','TABLE']:
                 generate_DROP_scripts(object_type,object_name,object_ddl)
         print(f"\nSCRIPT GENERATION COMPLETED: DROP")
+
+
+    def generate_ReadStream_Feed(feed_batch,RecordSchema):
+        readQuery = (
+            spark.readStream
+            .format('cloudFiles')
+            .option('cloudFiles.format', 'json')
+            .schema(RecordSchema)
+            .load(feed_batch)
+            .select(
+                F.col('topic')
+                ,F.col('key').cast('string')
+                ,F.col('value').cast('string')
+                ,(F.col('timestamp')/1000).cast('timestamp').alias('create_ts')
+                ,F.input_file_name().alias('source_file')
+                ,F.current_timestamp().alias('insert_ts')
+                )
+        )
+        return readQuery
+
+    def generate_WriteStream_FeedToTopicBronzeTbl(readQuery,topic_name,topic_ValueSchema,topic_BronzeTblName):
+        writeToBronzeTbl = (
+            readQuery
+            .filter(F.col('topic')==topic_name)
+            .withColumn('v',F.from_json(F.col('value'),topic_ValueSchema))
+            .select('key','create_ts','source_file','insert_ts','v.*')
+            .writeStream
+            .option('mergeSchema',True)
+            .trigger(availableNow=True)
+            .table(topic_BronzeTblName)
+        )
+        writeToBronzeTbl.awaitTermination()
+        print(f"'\nSource: ' {feed_batch} '\nSchema: ' {topic_ValueSchema} '\nTarget: '{topic_BronzeTblName}'\n'")
+
+    def ingest_Stream_TopicToBronzeTbl():
+        readQuery = generate_ReadStream_Feed(feed_batch,RecordSchema)
+        for topic in list_of_topics:
+            topic_ValueSchema = locals()[f'{topic}_ValueSchema']
+            topic_BronzeTblName = f'ct_bookstore.db_bronze.tbl_{topic}'
+            generate_WriteStream_FeedToTopicBronzeTbl(readQuery,topic,topic_ValueSchema,topic_BronzeTblName)
+
+self.list_of_objects = ['TABLE','DATABASE','CATALOG','external_location','storage_credential']
+self.list_of_databases = ['db_bronze','db_silver','db_gold']
+
+def getCatSorted_DF(df,column_name,list_of_objects,AscFlag:bool=True)->pd.DataFrame:
+    df = df.copy()
+    df[column_name] = pd.Categorical(
+        df[column_name]
+        ,categories=list_of_objects
+        ,ordered=True
+        )
+    df.sort_values([column_name],ascending=AscFlag,inplace=True)
+    return df
+
+    def get_ObjectsTracker(self,AscFlag):
+        sorted_ObjectsTracker = getCatSorted_DF(self.objects_tracker,'object_type',self.list_of_objects,AscFlag)
+        sorted_ObjectsTracker = getCatSorted_DF(self.objects_tracker,'object_name',self.list_of_databases,True)
+        sorted_ObjectsTracker = sorted_ObjectsTracker.sort_values(by=['object_type','object_name'],kind='stable')
+        return sorted_ObjectsTracker
+    

@@ -1,6 +1,6 @@
 
 try:
     spark.sql(f"""CREATE DATABASE ct_bookstore.db_bronze""")
-    print(f"\nSuccess: CREATE DATABASE 'ct_bookstore.db_bronze': \n''")
+    logger.info(f"\nSuccess: CREATE DATABASE 'ct_bookstore.db_bronze'")
 except Exception as e:
-    print(f"\nFailure: CREATE DATABASE 'ct_bookstore.db_bronze': \n{e}")
+    logger.error(f"\nFailure: CREATE DATABASE 'ct_bookstore.db_bronze': \n{e}")

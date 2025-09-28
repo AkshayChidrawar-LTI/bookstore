@@ -8,5 +8,6 @@ path:
   ddl: "ddl/"  
   etl: "etl/"
   dq: "dq/"
+  log: "log/"
   
   

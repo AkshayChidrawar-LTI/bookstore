@@ -16,3 +16,9 @@ columns:
   - name: object_ddl_DROP
     type: string
     nullable: true
+  - name: object_status
+    type: string
+    nullable: true
+  - name: script_status
+    type: string
+    nullable: true

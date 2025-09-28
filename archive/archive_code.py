@@ -442,3 +442,235 @@ def getCatSorted_DF(df,column_name,list_of_objects,AscFlag:bool=True)->pd.DataFr
         sorted_ObjectsTracker = sorted_ObjectsTracker.sort_values(by=['object_type','object_name'],kind='stable')
         return sorted_ObjectsTracker
     
+def save_script(file_name,script):
+    with open(file_name, 'w') as file:
+        file.write(script)
+
+def remove_script(file_name,logger):
+    try:
+        dbutils.fs.rm(file_name,recursive=True)
+        logger.info(f"Success: Script removed: '{file_name}'")
+    except Exception as e:
+        logger.warning(f"Failure: Error occured while removing file '{file_name}:'\n{e}")
+
+def execute_script(script_file,logger):
+    with open(script_file) as f:
+        code = f.read()
+    exec(code, {'logger': logger})
+
+def generate_CREATE_scripts(object_type,object_name,object_ddl,logger,**kwargs):
+    host = kwargs.get('host','')
+    token = kwargs.get('token','')
+    bucket_arn = kwargs.get('bucket_arn','')
+    el_loc = kwargs.get('el_loc','')
+    el_sc = kwargs.get('el_sc','')
+    table_loc = kwargs.get('table_loc','')
+    table_schema = kwargs.get('table_schema','')
+
+    if object_type == 'storage_credential':
+        script = f"""
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.service.catalog import AwsIamRole
+
+ws = WorkspaceClient(host='{host}',token = '{token}')
+try:
+    ws.storage_credentials.create(
+        name='{object_name}',
+        aws_iam_role=AwsIamRole(role_arn='{bucket_arn}')
+        )
+    logger.info(f"\\nSuccess: CREATE {object_type} '{object_name}'")
+except Exception as e:
+    logger.critical(f"\\nFailure: CREATE {object_type} '{object_name}': \\n{{e}}")
+"""
+    elif object_type == 'external_location':
+        script = f"""
+from databricks.sdk import WorkspaceClient
+
+ws = WorkspaceClient(host='{host}',token = '{token}')
+try:
+    ws.external_locations.create(
+        name='{object_name}'
+        ,url='{el_loc}'
+        ,credential_name='{el_sc}'
+        )
+    logger.info(f"\\nSuccess: CREATE {object_type} '{object_name}': \\n'{el_loc}'")
+except Exception as e:
+    logger.critical(f"\\nFailure: CREATE {object_type} '{object_name}': \\n{{e}}")
+"""
+    elif object_type in ['CATALOG','DATABASE','TABLE']:
+        script_ddl_create = f"CREATE {object_type} {object_name}"
+        if object_type in ['CATALOG','DATABASE']:
+            script_ddl_schema = ''
+        elif object_type == 'TABLE':
+            script_ddl_schema = f"\n{table_schema};\n"
+        script_ddl = script_ddl_create+script_ddl_schema
+        script = f"""
+try:
+    spark.sql(f\"\"\"{script_ddl}\"\"\")
+    logger.info(f"\\nSuccess: CREATE {object_type} '{object_name}'")
+except Exception as e:
+    logger.error(f"\\nFailure: CREATE {object_type} '{object_name}': \\n{{e}}")
+"""
+    save_script(object_ddl,script)
+    logger.info(f"\nBelow script generated to CREATE {object_type} '{object_name}'. \n'{object_ddl}'")
+
+def generate_DROP_scripts(object_type,object_name,object_ddl,logger,**kwargs):
+    host = kwargs.get('host')
+    token = kwargs.get('token')
+
+    if object_type == 'storage_credential':
+        script = f"""
+from databricks.sdk import WorkspaceClient
+
+ws = WorkspaceClient(host='{host}',token = '{token}')
+try:
+    ws.storage_credentials.delete(name='{object_name}')
+    logger.info(f"\\nSuccess: DROP {object_type} '{object_name}'")
+except Exception as e:
+    logger.critical(f"\\nFailure: DROP {object_type} '{object_name}': \\n{{e}}")
+"""
+    elif object_type == 'external_location':
+        script = f"""
+from databricks.sdk import WorkspaceClient
+
+ws = WorkspaceClient(host='{host}',token = '{token}')
+try:
+    ws.external_locations.delete(name='{object_name}')
+    logger.info(f"\\nSuccess: DROP {object_type} '{object_name}'")
+except Exception as e:
+    logger.critical(f"\\nFailure: DROP {object_type} '{object_name}': \\n{{e}}")
+"""
+    elif object_type in ['CATALOG','DATABASE','TABLE']:
+        if object_type in ['CATALOG','DATABASE']:
+            cascade = 'CASCADE'
+        elif object_type in ['TABLE']:
+            cascade = ''
+        script_ddl = f"DROP {object_type} {object_name} {cascade}"
+        script = f"""
+try:
+    spark.sql(f\"\"\"{script_ddl}\"\"\")
+    logger.info(f"\\nSuccess: DROP {object_type} '{object_name}'")
+except Exception as e:
+    logger.error(f"\\nFailure: DROP {object_type} '{object_name}': \\n{{e}}")
+"""
+    save_script(object_ddl,script)
+    logger.info(f"\nBelow script generated to DROP {object_type} '{object_name}'. \n'{object_ddl}'")
+
+class ScriptManager():
+    def __init__(
+        self
+        ,logger: str
+        object_type: str
+        ,object_name: str
+        ,object_ddl: str
+        ,**kwargs
+    ):
+        self.logger = logger
+
+    def generate_CREATE_script(self):    
+        object_type = self.object_type
+        object_name = self.object_name
+        object_ddl  = self.object_ddl
+        workspace   = self.kwargs.get('workspace','')
+        aws_iam_role= self.kwargs.get('aws_iam_role','')
+        el_loc      = self.kwargs.get('el_loc','')
+        el_sc       = self.kwargs.get('el_sc','')
+        table_schema= self.kwargs.get('table_schema','')
+            
+        success_message = f"\\nSuccess: CREATE {object_type} '{object_name}'"
+        failure_message = f"\\nFailure: CREATE {object_type} '{object_name}': \\n{{e}}"
+
+        if object_type == 'storage_credential':
+            script = script_for_create_sc(workspace,object_name,aws_iam_role)
+        elif object_type == 'external_location':
+            script = script_for_create_el(workspace,object_name,el_loc,el_sc)
+        elif object_type in ['CATALOG','DATABASE','TABLE']:
+            script = script_for_create_cdt(object_type,object_name,table_schema)
+        script = wrapper_for_TryExcept(script,success_message,failure_message)
+
+        return script
+
+    def save_script(self):
+        try:
+            with open(self.object_ddl, 'w') as file:
+                file.write(self.script)
+                self.logger.info(f"Success: script saved: '{self.object_ddl}'")
+        except Exception as e:
+            self.logger.error(f"Failure: Error occured while saving script '{self.object_ddl}:'\n{e}")
+    
+    def execute_script(self):
+        with open(script_file) as f:
+            code = f.read()
+        exec(code,{'logger':self.logger})
+
+    def remove_script(self,script_file):
+        try:
+            dbutils.fs.rm(script_file,recursive=True)
+            self.logger.info(f"Success: script removed: '{script_file}'")
+        except Exception as e:
+            self.logger.error(f"Failure: Error occured while removing script '{script_file}:'\n{e}")
+
+        save_script(object_ddl,script)
+        self.logger.info(f"\nBelow script generated to CREATE {object_type} '{object_name}'. \n'{object_ddl}'")
+
+    def process_CREATE_script(self):
+        
+
+def generate_DROP_scripts(object_type,object_name,object_ddl,logger,**kwargs):
+    host = kwargs.get('host')
+    token = kwargs.get('token')
+
+    if object_type == 'storage_credential':
+        script = f"""
+from databricks.sdk import WorkspaceClient
+
+ws = WorkspaceClient(host='{host}',token = '{token}')
+try:
+    ws.storage_credentials.delete(name='{object_name}')
+    logger.info(f"\\nSuccess: DROP {object_type} '{object_name}'")
+except Exception as e:
+    logger.critical(f"\\nFailure: DROP {object_type} '{object_name}': \\n{{e}}")
+"""
+    elif object_type == 'external_location':
+        script = f"""
+from databricks.sdk import WorkspaceClient
+
+ws = WorkspaceClient(host='{host}',token = '{token}')
+try:
+    ws.external_locations.delete(name='{object_name}')
+    logger.info(f"\\nSuccess: DROP {object_type} '{object_name}'")
+except Exception as e:
+    logger.critical(f"\\nFailure: DROP {object_type} '{object_name}': \\n{{e}}")
+"""
+    elif object_type in ['CATALOG','DATABASE','TABLE']:
+        if object_type in ['CATALOG','DATABASE']:
+            cascade = 'CASCADE'
+        elif object_type in ['TABLE']:
+            cascade = ''
+        script_ddl = f"DROP {object_type} {object_name} {cascade}"
+        script = f"""
+try:
+    spark.sql(f\"\"\"{script_ddl}\"\"\")
+    logger.info(f"\\nSuccess: DROP {object_type} '{object_name}'")
+except Exception as e:
+    logger.error(f"\\nFailure: DROP {object_type} '{object_name}': \\n{{e}}")
+"""
+    save_script(object_ddl,script)
+    logger.info(f"\nBelow script generated to DROP {object_type} '{object_name}'. \n'{object_ddl}'")
+
+def wrapper_for_TryExcept(script,success_message,failure_message):
+        script = f"""
+try:
+    {script}
+    logger.info({success_message})
+except Exception as e:
+    logger.error({failure_message})
+"""
+
+    if object_type in func_map:
+        create_func,drop_func = func_map[object_type]
+        create_script = wrapper_for_TryExcept(create_func(),success_messages["CREATE"],failure_messages["CREATE"])
+        drop_script   = wrapper_for_TryExcept(drop_func(),success_messages["DROP"],failure_messages["DROP"])
+    else:
+        raise ValueError(f"Unsupported object_type: {object_type}")
+    return create_script,drop_script

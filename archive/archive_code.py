@@ -674,3 +674,17 @@ except Exception as e:
     else:
         raise ValueError(f"Unsupported object_type: {object_type}")
     return create_script,drop_script
+
+@try_except("\nSuccess: {self.repository_file} \nRepository:\n {self.get_Repository()}"
+                ,"Failure: Error occurred while reading file {self.repository_file}:\n{e}")
+
+@try_except("\nSuccess: {self.metadata_file} \nMetadata:\n {self.get_Metadata()}"
+                ,"Failure: Error occurred while reading file {self.metadata_file}:\n{e}")
+
+ @try_except("Success: {DDLType} ObjectTracker: '{table_name}'"
+                ,"Failure: Error occurred while {DDLType} ObjectTracker: '{table_name}':\n{e}")
+
+# self.objects_tracker = appendTo_DF(self.objects_tracker,{'object_type':object_type,'object_name':object_name,'object_ddl_CREATE':object_ddl_CREATE,'object_ddl_DROP':object_ddl_DROP})
+# self.objects_tracker = appendTo_DF(self.objects_tracker,{'object_type':object_type,'object_name':object_name,'object_ddl_CREATE':object_ddl_CREATE,'object_ddl_DROP':object_ddl_DROP})
+# self.objects_tracker = appendTo_DF(self.objects_tracker,{'object_type':object_type,'object_name':object_name,'object_ddl_CREATE':object_ddl_CREATE,'object_ddl_DROP':object_ddl_DROP})
+# self.objects_tracker = appendTo_DF(self.objects_tracker,{'object_type':object_type,'object_name':object_name,'object_ddl_CREATE':object_ddl_CREATE,'object_ddl_DROP':object_ddl_DROP})

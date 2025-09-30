@@ -1,4 +1,9 @@
 # Databricks notebook source
+from databricks.sdk.service.catalog import AwsIamRole
+print(AwsIamRole(role_arn = 'arn:aws:iam::302263052839:role/databricks-s3-ingest-3fcda-db_s3_iam'))
+
+# COMMAND ----------
+
 # MAGIC %run /Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/dependencies/Designer
 
 # COMMAND ----------

@@ -7,6 +7,7 @@ import pandas as pd
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
 from pyspark.sql.window import Window
+from typing import Callable
 import logging
 import gc
 spark.conf.set("spark.sql.session.timeZone","Asia/Kolkata")
@@ -87,18 +88,18 @@ def yaml_to_schema(columns):
 
 ################################ CREATE ######################################
 
-def script_for_create_sc(workspace,object_name,aws_iam_role):
+def script_for_create_sc(object_name,aws_iam_role):
     script = f"""
-{workspace}.storage_credentials.create(
+workspace.storage_credentials.create(
     name='{object_name}'
     ,aws_iam_role={aws_iam_role}
     )
 """
     return script
 #----------------------------------------------------------------------
-def script_for_create_el(workspace,object_name,el_loc,el_sc):
+def script_for_create_el(object_name,el_loc,el_sc):
     script = f"""
-{workspace}.external_locations.create(
+workspace.external_locations.create(
     name='{object_name}'
     ,url='{el_loc}'
     ,credential_name='{el_sc}'
@@ -114,15 +115,15 @@ spark.sql(f\"\"\" CREATE {object_type} {object_name} \\n{table_schema};\\n \"\"\
 
 ################################## DROP ####################################
 
-def script_for_drop_sc(workspace,object_name):
+def script_for_drop_sc(object_name):
     script = f"""
-{workspace}.storage_credentials.delete(name='{object_name}')
+workspace.storage_credentials.delete(name='{object_name}')
 """
     return script
 #----------------------------------------------------------------------
-def script_for_drop_el(workspace,object_name):
+def script_for_drop_el(object_name):
     script = f"""
-{workspace}.external_locations.delete(name='{object_name}')
+workspace.external_locations.delete(name='{object_name}')
 """
     return script
 #----------------------------------------------------------------------
@@ -134,21 +135,25 @@ spark.sql(f\"\"\" f"DROP {object_type} {object_name} {cascade};" \"\"\")
 
 # COMMAND ----------
 
-def try_except(logger,success_template,failure_template):
+def try_except(success_template,failure_template):
     def decorator(func):
         def wrapper(*args,**kwargs):
+            import inspect
+            bound_args = inspect.signature(func).bind(*args,**kwargs)
+            bound_args.apply_defaults()
+            logger = bound_args.arguments.get('logger')
             try:
                 result = func(*args,**kwargs)
-                logger.info(success_template.format(*args,**kwargs))
+                logger.info(success_template.format(**bound_args.arguments))
                 return result
             except Exception as e:
-                logger.error(failure_template.format(*args,**kwargs, e=e))
+                bound_args.arguments['e'] = e
+                logger.error(failure_template.format(**bound_args.arguments))
                 return None
         return wrapper
     return decorator
 #---------------------------------------------------------------------------
-@try_except(logger
-            ,"Success: CREATE and DROP scripts generated for {object_type} {object_name}. Proceeding to save script..."
+@try_except("Success: CREATE and DROP scripts generated for {object_type} {object_name}. Proceeding to save script..."
             ,"Failure: Error occurred while generating scripts CREATE/ DROP for {object_type} {object_name} :\n{e}")
 def generate_script(object_type,object_name,logger,**kwargs):
     workspace   = kwargs.get('workspace','')
@@ -159,12 +164,12 @@ def generate_script(object_type,object_name,logger,**kwargs):
 
     func_map = {
         'storage_credential': (
-            lambda:script_for_create_sc(workspace,object_name,aws_iam_role)
-            ,lambda:script_for_drop_sc(workspace,object_name)
+            lambda:script_for_create_sc(object_name,aws_iam_role)
+            ,lambda:script_for_drop_sc(object_name)
         )
         ,'external_location': (
-            lambda:script_for_create_el(workspace,object_name,el_loc,el_sc)
-            ,lambda:script_for_drop_el(workspace,object_name)
+            lambda:script_for_create_el(object_name,el_loc,el_sc)
+            ,lambda:script_for_drop_el(object_name)
             )
         ,'CATALOG':(
             lambda:script_for_create_cdt(object_type,object_name)
@@ -187,8 +192,7 @@ def generate_script(object_type,object_name,logger,**kwargs):
         raise ValueError(f"Unsupported object_type: {object_type}")
     return create_script,drop_script
 
-@try_except(logger
-            ,"Success: Script saved here: '{object_ddl}'"
+@try_except("Success: Script saved here: '{object_ddl}'"
             ,"Failure: Error occurred while saving script '{object_ddl}':\n{e}")
 def save_script(object_ddl,script,logger):
     with open(object_ddl,'w') as file:
@@ -199,28 +203,19 @@ def GenerateSave_script(object_type,object_name,object_ddl_CREATE,object_ddl_DRO
     save_script(object_ddl=object_ddl_CREATE,script=create_script,logger=logger)
     save_script(object_ddl=object_ddl_DROP,script=drop_script,logger=logger)
 
-
 # COMMAND ----------
 
-@try_except(logger
-            ,"Success: Script executed: '{object_ddl}'"
+@try_except("Success: Script executed: '{object_ddl}'"
             ,"Failure: Error occurred while executing script '{object_ddl}':\n{e}")
 def execute_script(object_ddl,logger):
     with open(object_ddl) as f:
         code = f.read()
     exec(code)
 
-@try_except(logger
-            ,"Success: Script removed: '{object_ddl}'"
+@try_except("Success: Script removed: '{object_ddl}'"
             ,"Failure: Error occurred while removing script '{object_ddl}':\n{e}")
 def remove_script(object_ddl,logger):
     dbutils.fs.rm(object_ddl,recursive=True)
-
-@try_except(logger
-            ,"Success: ObjectTracker created: '{object_ddl}'"
-            ,"Failure: Error occurred while creating ObjectTracker:\n{e}")
-def create_ObjectsTracker(table_name,table_schema,logger):
-    exec(script_for_create_cdt('TABLE',table_name,table_schema))
 
 # COMMAND ----------
 

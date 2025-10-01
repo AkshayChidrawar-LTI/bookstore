@@ -3,6 +3,7 @@ import os
 from databricks.sdk import WorkspaceClient
 from databricks.sdk.service.catalog import AwsIamRole
 import yaml
+import json
 import pandas as pd
 import pyspark.sql.functions as F
 import pyspark.sql.types as T
@@ -31,7 +32,7 @@ def appendTo_DF(df,new_row)->pd.DataFrame:
     return df
 
 def get_Workspace(host,token):
-  return WorkspaceClient(host,token)
+  return WorkspaceClient(host=host,token=token)
 
 def get_Logger(log_file,log_mode):
   logger = logging.getLogger()

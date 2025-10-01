@@ -1,9 +1,4 @@
 # Databricks notebook source
-from databricks.sdk.service.catalog import AwsIamRole
-print(AwsIamRole(role_arn = 'arn:aws:iam::302263052839:role/databricks-s3-ingest-3fcda-db_s3_iam'))
-
-# COMMAND ----------
-
 # MAGIC %run /Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/dependencies/Designer
 
 # COMMAND ----------
@@ -12,20 +7,25 @@ bookstore = ProjectSetup(
     ProjectName='bookstore'
     ,repository_file='/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/config/repository.yml'
     ,metadata_file = '/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/config/metadata.yml'
-    ,logFileName = '/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/logs/bookstore.log'
 )
 
 # COMMAND ----------
 
-bookstore.GenerateScripts()
-display(bookstore.objects_tracker)
+bookstore.ScriptGenerator().GenerateScripts()
+display(spark.sql(f"select * from {bookstore.ProjectManager.tbl_ObjectsTracker}"))
 
 # COMMAND ----------
 
-bookstore.CreateObjects()
+bookstore.ScriptExecutor().Setup()
+display(spark.sql(f"select * from workspace.default.objects_tracker"))
 
 # COMMAND ----------
 
-bookstore.DropObjectsAndScripts()
+bookstore.ProjectM().Cleanup()
+display(spark.sql(f"select * from workspace.default.objects_tracker"))
+
+# COMMAND ----------
+
+bookstore.ProjectManager.Purge()
 del bookstore
 gc.collect()

@@ -21,5 +21,14 @@ display(spark.sql(f"select * from workspace.default.objects_tracker"))
 # COMMAND ----------
 
 bookstore.ProjectManager.Purge()
-del bookstore
-gc.collect()
+
+# COMMAND ----------
+
+import logging
+
+for name, logger in logging.Logger.manager.loggerDict.items():
+    if isinstance(logger, logging.Logger):
+        print(f"Logger Name: {name}")
+        print(f"  Level: {logging.getLevelName(logger.level)}")
+        print(f"  Handlers: {[type(h).__name__ for h in logger.handlers]}")
+        print("-" * 40)

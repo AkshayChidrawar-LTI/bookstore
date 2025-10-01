@@ -37,8 +37,8 @@ class ObjectsTracker():
                         ,'{object_name}'
                         ,'{object_ddl_CREATE}'
                         ,'{object_ddl_DROP}'
-                        ,NULL
-                        ,NULL)
+                        ,'{object_status}'
+                        ,'{script_status}')
                         """)
         elif DDLType == 'UPDATE_script_status':
             spark.sql(f"""
@@ -103,7 +103,7 @@ class Initializer:
     def Initialize(self):
         self.dict_repo = self.get_Repository(logger = self.logger_for_initializer)
         self.dict_meta = self.get_Metadata(logger = self.logger_for_initializer)
-        self.workspace = get_Workspace(host=self.dict_meta['host'],token=self.dict_meta['token'],logger=self.logger_for_initializer)
+        self.workspace = create_Workspace(host=self.dict_meta['host'],token=self.dict_meta['token'],logger=self.logger_for_initializer)
         self.ObjectsTracker.manage_objects_tracker(DDLType='CREATE',logger=self.logger_for_initializer)
         self.logger_for_initializer.info(f"\nInitializer completed.")
         print(f"\nInitializer completed. For status details, refer below log file.\n'{get_log_file(self.logger_for_initializer)}'")
@@ -146,7 +146,7 @@ class ScriptGenerator:
             object_ddl_CREATE = get_path(path_ddl_storage_credentials,object_name+'_CREATE'+'.py')
             object_ddl_DROP = get_path(path_ddl_storage_credentials,object_name+'_DROP'+'.py')
             GenerateSave_script(object_type,object_name,object_ddl_CREATE,object_ddl_DROP,self.logger_for_scripting,aws_iam_role=aws_iam_role)
-            self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=NULL,script_status=NULL)
+            self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=None,script_status=None)
             self.ObjectsTracker.maintain_objects_tracker(DDLType='UPDATE_script_status',script_status='GENERATED',object_name=object_name)
 
             object_type = 'external_location'
@@ -156,7 +156,7 @@ class ScriptGenerator:
             el_loc = get_bucketlink(bucket_name)
             el_sc = 'sc_'+bucket_name
             GenerateSave_script(object_type,object_name,object_ddl_CREATE,object_ddl_DROP,self.logger_for_scripting,workspace=workspace,el_loc=el_loc,el_sc=el_sc)
-            self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=NULL,script_status=NULL)
+            self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=None,script_status=None)
             self.ObjectsTracker.maintain_objects_tracker(DDLType='UPDATE_script_status',script_status='GENERATED',object_name=object_name)
 
         for catalog in dwh_structure['catalogs']:
@@ -165,7 +165,7 @@ class ScriptGenerator:
             object_ddl_CREATE = get_path(path_ddl_catalogs,object_name+'_CREATE'+'.py')
             object_ddl_DROP = get_path(path_ddl_catalogs,object_name+'_DROP'+'.py')
             GenerateSave_script(object_type,object_name,object_ddl_CREATE,object_ddl_DROP,self.logger_for_scripting)
-            self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=NULL,script_status=NULL)
+            self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=None,script_status=None)
             self.ObjectsTracker.maintain_objects_tracker(DDLType='UPDATE_script_status',script_status='GENERATED',object_name=object_name)
 
             for database in catalog['databases']:
@@ -174,7 +174,7 @@ class ScriptGenerator:
                 object_ddl_CREATE = get_path(path_ddl_databases,get_fname(object_name)+'_CREATE'+'.py')
                 object_ddl_DROP = get_path(path_ddl_databases,get_fname(object_name)+'_DROP'+'.py')
                 GenerateSave_script(object_type,object_name,object_ddl_CREATE,object_ddl_DROP,self.logger_for_scripting)
-                self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=NULL,script_status=NULL)
+                self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=None,script_status=None)
                 self.ObjectsTracker.maintain_objects_tracker(DDLType='UPDATE_script_status',script_status='GENERATED',object_name=object_name)
 
         for item in table_schemas:
@@ -185,7 +185,7 @@ class ScriptGenerator:
             object_ddl_DROP = get_path(path_ddl_tables,get_fname(object_name)+'_DROP'+'.py')
             table_schema = yaml_to_schema(fc['columns'])
             GenerateSave_script(object_type,object_name,object_ddl_CREATE,object_ddl_DROP,self.logger_for_scripting,table_schema=table_schema)
-            self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=NULL,script_status=NULL)
+            self.ObjectsTracker.maintain_objects_tracker(DDLType='APPEND_object',object_type=object_type,object_name=object_name,object_ddl_CREATE=object_ddl_CREATE,object_ddl_DROP=object_ddl_DROP,object_status=None,script_status=None)
             self.ObjectsTracker.maintain_objects_tracker(DDLType='UPDATE_script_status',script_status='GENERATED',object_name=object_name)
 
         print(f"\nEND OF GENERATING SCRIPTS (CREATE & DROP). Refer below log file for more details.\n'{get_log_file(self.logger_for_scripting)}'")
@@ -196,12 +196,14 @@ class ScriptGenerator:
 class ProjectManager:
     def __init__(
         self
+        ,ProjectName: str
         ,workspace: WorkspaceClient
         ,ObjectsTracker: ObjectsTracker
         ,logger_for_setup: logging.Logger
         ,logger_for_cleanup: logging.Logger
         ,logger_for_purge: logging.Logger
     ):
+        self.ProjectName = ProjectName
         self.workspace = workspace
         self.ObjectsTracker = ObjectsTracker
         self.logger_for_setup = logger_for_setup
@@ -249,7 +251,7 @@ class ProjectManager:
             f"<h3>WARNING: PROCEED WITH CAUTION.</h3>This will drop following items:<br><br>"
             f"1. <b>ObjectsTracker table</b>: <br>{self.ObjectsTracker.tbl_objects_tracker}<br><br>"
             f"2. <b>All log files</b>: <br>{path_log}<br><br>"
-            f"3. <b>WorkspaceClient object</b>: <br>{self.workspace}<br><br>"
+            f"3. <b>Instance as a whole</b>: <br>{self.ProjectName}<br><br>"
             )
         confirm = input("\nType 'yes' to proceed: ")
         if confirm.lower() != 'yes':
@@ -257,11 +259,10 @@ class ProjectManager:
             return
         try:
             self.ObjectsTracker.manage_objects_tracker(DDLType='DROP',logger=self.logger_for_purge)
-            for log_file in os.listdir(path_log):
-                if log_file != 'purge.log':
-                    remove_script(object_ddl=get_path(path_log,log_file),logger=self.logger_for_purge)
-            remove_loggers()
-            del self.workspace
+            remove_log_files(path_log,self.logger_for_purge)
+            remove_loggers(self.logger_for_purge)
+            del self.ProjectName
+            gc.collect()
             print(f"\nPurge completed.")
         except Exception as e:
             print(f"\nPurge failed with exception: \n{e}")
@@ -285,20 +286,21 @@ class ProjectSetup:
         self.Initializer = Initializer(repository_file=self.repository_file
                                        ,metadata_file=self.metadata_file
                                        ,ObjectsTracker=self.ObjectsTracker
-                                       ,logger_for_initializer=get_Logger(get_path('/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/log','initializer.log'),'a'))
+                                       ,logger_for_initializer=create_Logger('logger_for_initializer',get_path('/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/log','initializer.log'),'a'))
         self.Initializer.Initialize()
 
-        self.logger_for_scripting   = get_Logger(get_path(self.Initializer.dict_repo['path_log'],'scripting.log'),'a')
-        self.logger_for_setup       = get_Logger(get_path(self.Initializer.dict_repo['path_log'],'setup.log'),'a')
-        self.logger_for_cleanup     = get_Logger(get_path(self.Initializer.dict_repo['path_log'],'cleanup.log'),'a')
-        self.logger_for_purge       = get_Logger(get_path(self.Initializer.dict_repo['path_log'],'purge.log'),'w')
+        self.logger_for_scripting   = create_Logger('logger_for_scripting',get_path(self.Initializer.dict_repo['path_log'],'scripting.log'),'a')
+        self.logger_for_setup       = create_Logger('logger_for_setup',get_path(self.Initializer.dict_repo['path_log'],'setup.log'),'a')
+        self.logger_for_cleanup     = create_Logger('logger_for_cleanup',get_path(self.Initializer.dict_repo['path_log'],'cleanup.log'),'a')
+        self.logger_for_purge       = create_Logger('logger_for_purge',get_path(self.Initializer.dict_repo['path_log'],'purge.log'),'w')
 
         self.ScriptGenerator= ScriptGenerator(dict_repo=self.Initializer.dict_repo
                                               ,dict_meta=self.Initializer.dict_meta
                                               ,ObjectsTracker=self.ObjectsTracker
                                               ,logger_for_scripting=self.logger_for_scripting)
 
-        self.ProjectManager = ProjectManager(workspace=self.Initializer.workspace
+        self.ProjectManager = ProjectManager(ProjectName=self.ProjectName
+                                             ,workspace=self.Initializer.workspace
                                              ,ObjectsTracker=self.ObjectsTracker
                                              ,logger_for_setup=self.logger_for_setup
                                              ,logger_for_cleanup=self.logger_for_cleanup

@@ -27,11 +27,10 @@ def get_fname(item):
 def get_bucketlink(bucket_name):
   return 's3://'+ bucket_name + '/'
 
-def get_Workspace(host,token,logger):
+def create_Workspace(host,token,logger):
   workspace = WorkspaceClient(host=host,token=token)
-  logger.info(f"Success: WorkspaceClient object created as:\n {workspace}")
+  logger.info(f"Success: WorkspaceClient object created:\n {workspace}")
   return workspace
-
 
 # COMMAND ----------
 
@@ -49,8 +48,8 @@ class ISTFormatter(logging.Formatter):
             datefmt = '%Y-%m-%d %H:%M:%S'
         return dt.strftime(datefmt)
 
-def get_Logger(log_file,log_mode):
-  logger = logging.getLogger()
+def create_Logger(logger_name,log_file,log_mode):
+  logger = logging.getLogger(logger_name)
   formatter = ISTFormatter('%(asctime)s - %(levelname)s - %(message)s')
   # Remove existing FileHandlers for this log file
   for handler in logger.handlers[:]:
@@ -63,17 +62,47 @@ def get_Logger(log_file,log_mode):
   logger.addHandler(handler)
   return logger
 
+def get_Logger(logger_name):
+  return logging.getLogger(logger_name)
+
 def get_log_file(logger):
   return logger.handlers[0].baseFilename
 
-def remove_loggers():
-  log_manager = logging.Logger.manager
-  for logger_name in list(log_manager.loggerDict.keys()):
-      logger = logging.getLogger(logger_name)
-      handlers = logger.handlers[:]
-      for handler in handlers:
-          handler.close()
-          logger.removeHandler(handler)
+def remove_log_files(path_log,logger):
+  for log_file in os.listdir(path_log):
+    if log_file != 'purge.log':
+      remove_script(object_ddl=get_path(path_log,log_file),logger=logger)
+
+def remove_loggers(logger_purge):
+  for logger_name in [
+    'logger_for_initializer',
+    'logger_for_scripting',
+    'logger_for_setup',
+    'logger_for_cleanup']:
+    logger = logging.getLogger(logger_name)
+    handlers = logger.handlers[:]
+    for handler in handlers:
+      logger.removeHandler(handler)
+      handler.close()
+      logger_purge.info(f"Logger Handler removed: {logger} - {handler}")
+
+# COMMAND ----------
+
+logger_for_initializer = create_Logger('logger_for_initializer',get_path('/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/log','initializer.log'),'w')
+logger_for_scripting = create_Logger('logger_for_scripting',get_path('/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/log','scripting.log'),'w')
+logger_for_setup = create_Logger('logger_for_setup',get_path('/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/log','setup.log'),'w')
+logger_for_purge = create_Logger('logger_for_purge',get_path('/Workspace/Users/akshay.chidrawar@ltimindtree.com/bookstore/log','purge.log'),'a')
+for logger_name in [
+    'logger_for_initializer',
+    'logger_for_scripting',
+    'logger_for_setup',
+    'logger_for_cleanup']:
+    logger = logging.getLogger(logger_name)
+    handlers = logger.handlers[:]
+    for handler in handlers:
+      logger_for_purge.info(f"Logger Handler removed: {logger.name} - {handler}")
+      logger.removeHandler(handler)
+      handler.close()
 
 # COMMAND ----------
 

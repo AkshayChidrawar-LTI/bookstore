@@ -1,4 +1,8 @@
 
+def appendTo_DF(df,new_row)->pd.DataFrame:
+    df = pd.concat([df,pd.DataFrame([new_row])],ignore_index=True)
+    return df
+
 def get_user():
     return spark.sql("SELECT current_user()").collect()[0][0]
 
@@ -688,3 +692,9 @@ except Exception as e:
 # self.objects_tracker = appendTo_DF(self.objects_tracker,{'object_type':object_type,'object_name':object_name,'object_ddl_CREATE':object_ddl_CREATE,'object_ddl_DROP':object_ddl_DROP})
 # self.objects_tracker = appendTo_DF(self.objects_tracker,{'object_type':object_type,'object_name':object_name,'object_ddl_CREATE':object_ddl_CREATE,'object_ddl_DROP':object_ddl_DROP})
 # self.objects_tracker = appendTo_DF(self.objects_tracker,{'object_type':object_type,'object_name':object_name,'object_ddl_CREATE':object_ddl_CREATE,'object_ddl_DROP':object_ddl_DROP})
+
+    @try_except("\nSuccess: Metadata:\n {result})"
+                ,"\nFailure: Error occurred while reading file '{metadata_file}' :\n{e}")
+
+    @try_except("\nSuccess: Repository:\n {result}"
+            ,"\nFailure: Error occurred while reading file '{repository_file}' :\n{e}")

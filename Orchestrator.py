@@ -11,17 +11,11 @@ bookstore = ProjectSetup(
 
 # COMMAND ----------
 
-bookstore.ScriptGenerator().GenerateScripts()
+bookstore.ScriptGenerator.GenerateScripts()
 display(spark.sql(f"select * from {bookstore.ProjectManager.tbl_ObjectsTracker}"))
-
-# COMMAND ----------
-
-bookstore.ScriptExecutor().Setup()
+bookstore.ProjectManager.Setup()
 display(spark.sql(f"select * from workspace.default.objects_tracker"))
-
-# COMMAND ----------
-
-bookstore.ProjectM().Cleanup()
+bookstore.ProjectManager.Cleanup()
 display(spark.sql(f"select * from workspace.default.objects_tracker"))
 
 # COMMAND ----------

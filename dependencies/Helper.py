@@ -27,16 +27,31 @@ def get_fname(item):
 def get_bucketlink(bucket_name):
   return 's3://'+ bucket_name + '/'
 
-def appendTo_DF(df,new_row)->pd.DataFrame:
-    df = pd.concat([df,pd.DataFrame([new_row])],ignore_index=True)
-    return df
+def get_Workspace(host,token,logger):
+  workspace = WorkspaceClient(host=host,token=token)
+  logger.info(f"Success: WorkspaceClient object created as:\n {workspace}")
+  return workspace
 
-def get_Workspace(host,token):
-  return WorkspaceClient(host=host,token=token)
+
+# COMMAND ----------
+
+import logging
+import pytz
+from datetime import datetime
+
+class ISTFormatter(logging.Formatter):
+    def converter(self,timestamp):
+        dt = datetime.fromtimestamp(timestamp, pytz.timezone('Asia/Kolkata'))
+        return dt
+    def formatTime(self, record, datefmt=None):
+        dt = self.converter(record.created)
+        if datefmt is None:
+            datefmt = '%Y-%m-%d %H:%M:%S'
+        return dt.strftime(datefmt)
 
 def get_Logger(log_file,log_mode):
   logger = logging.getLogger()
-  formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+  formatter = ISTFormatter('%(asctime)s - %(levelname)s - %(message)s')
   # Remove existing FileHandlers for this log file
   for handler in logger.handlers[:]:
     if isinstance(handler,logging.FileHandler) and handler.baseFilename == log_file:
@@ -48,7 +63,8 @@ def get_Logger(log_file,log_mode):
   logger.addHandler(handler)
   return logger
 
-import logging
+def get_log_file(logger):
+  return logger.handlers[0].baseFilename
 
 def remove_loggers():
   log_manager = logging.Logger.manager
@@ -130,32 +146,43 @@ workspace.external_locations.delete(name='{object_name}')
 #----------------------------------------------------------------------
 def script_for_drop_cdt(object_type,object_name):
     cascade = '' if object_type == 'TABLE' else 'CASCADE'
-    script = f"""
-spark.sql(f\"\"\" f"DROP {object_type} {object_name} {cascade};" \"\"\")
-"""
+    script = f"spark.sql(\"DROP {object_type} {object_name} {cascade};\")\n"
+    return script
 
 # COMMAND ----------
 
-def try_except(success_template,failure_template):
+from functools import wraps
+import inspect
+
+def try_except(success_template, failure_template):
     def decorator(func):
-        def wrapper(*args,**kwargs):
-            import inspect
-            bound_args = inspect.signature(func).bind(*args,**kwargs)
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            bound_args = inspect.signature(func).bind(*args, **kwargs)
             bound_args.apply_defaults()
-            logger = bound_args.arguments.get('logger')
+            logger = kwargs.get('logger', None)
             try:
-                result = func(*args,**kwargs)
-                logger.info(success_template.format(**bound_args.arguments))
+                result = func(*args, **kwargs)
+                if logger:
+                    logger.info(success_template.format(
+                        **bound_args.arguments,
+                        result=str(result)
+                    ))
                 return result
             except Exception as e:
-                bound_args.arguments['e'] = e
-                logger.error(failure_template.format(**bound_args.arguments))
-                return None
+                if logger:
+                    # Add 'e' and 'result' to arguments for formatting
+                    format_args = dict(bound_args.arguments)
+                    format_args['e'] = e
+                    # Remove 'result' if already present to avoid duplicate key error
+                    format_args.pop('result', None)
+                    logger.error(failure_template.format(**format_args))
+                raise
         return wrapper
     return decorator
 #---------------------------------------------------------------------------
-@try_except("Success: CREATE and DROP scripts generated for {object_type} {object_name}. Proceeding to save script..."
-            ,"Failure: Error occurred while generating scripts CREATE/ DROP for {object_type} {object_name} :\n{e}")
+@try_except("\nSuccess: Scripts generated for CREATE and DROP {object_type} {object_name}. Proceeding to save script..."
+            ,"\nFailure: Error occurred while generating scripts CREATE/ DROP for {object_type} {object_name} :\n{e}")
 def generate_script(object_type,object_name,logger,**kwargs):
     workspace   = kwargs.get('workspace','')
     aws_iam_role= kwargs.get('aws_iam_role','')
@@ -193,8 +220,8 @@ def generate_script(object_type,object_name,logger,**kwargs):
         raise ValueError(f"Unsupported object_type: {object_type}")
     return create_script,drop_script
 
-@try_except("Success: Script saved here: '{object_ddl}'"
-            ,"Failure: Error occurred while saving script '{object_ddl}':\n{e}")
+@try_except("\nSuccess: Script saved here: '{object_ddl}'"
+            ,"\nFailure: Error occurred while saving script '{object_ddl}':\n{e}")
 def save_script(object_ddl,script,logger):
     with open(object_ddl,'w') as file:
         file.write(script)
@@ -204,19 +231,17 @@ def GenerateSave_script(object_type,object_name,object_ddl_CREATE,object_ddl_DRO
     save_script(object_ddl=object_ddl_CREATE,script=create_script,logger=logger)
     save_script(object_ddl=object_ddl_DROP,script=drop_script,logger=logger)
 
-# COMMAND ----------
-
-@try_except("Success: Script executed: '{object_ddl}'"
-            ,"Failure: Error occurred while executing script '{object_ddl}':\n{e}")
-def execute_script(object_ddl,logger):
+@try_except("\nSuccess: Script executed: '{object_ddl}'"
+            ,"\nFailure: Error occurred while executing script '{object_ddl}':\n{e}")
+def execute_script(object_ddl,logger,context={}):
     with open(object_ddl) as f:
         code = f.read()
-    exec(code)
+    exec(code,context)
 
-@try_except("Success: Script removed: '{object_ddl}'"
-            ,"Failure: Error occurred while removing script '{object_ddl}':\n{e}")
+@try_except("\nSuccess: Script removed: '{object_ddl}'"
+            ,"\nFailure: Error occurred while removing script '{object_ddl}':\n{e}")
 def remove_script(object_ddl,logger):
-    dbutils.fs.rm(object_ddl,recursive=True)
+    os.remove(object_ddl)
 
 # COMMAND ----------
 

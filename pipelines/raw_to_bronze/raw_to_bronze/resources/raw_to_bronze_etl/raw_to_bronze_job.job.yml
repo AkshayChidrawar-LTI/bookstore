@@ -1,0 +1,21 @@
+# The job that triggers raw_to_bronze_etl.
+
+resources:
+  jobs:
+    raw_to_bronze_job:
+      name: raw_to_bronze_job
+
+      trigger:
+        # Run this job every day, exactly one day from the last run; see https://docs.databricks.com/api/workspace/jobs/create#trigger
+        periodic:
+          interval: 1
+          unit: DAYS
+
+      #email_notifications:
+      #  on_failure:
+      #    - your_email@example.com
+
+      tasks:
+        - task_key: refresh_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.raw_to_bronze_etl.id}

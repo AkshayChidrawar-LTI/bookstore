@@ -698,3 +698,68 @@ except Exception as e:
 
     @try_except("\nSuccess: Repository:\n {result}"
             ,"\nFailure: Error occurred while reading file '{repository_file}' :\n{e}")
+
+%sql
+CREATE TABLE IF NOT EXISTS workspace.default.bronze_to_silver_last_processed
+(
+  topic STRING,
+  last_processed_ts TIMESTAMP
+);
+
+%sql
+insert into workspace.default.bronze_to_silver_last_processed values 
+('books',NULL)
+,('customers',NULL)
+,('orders',NULL);
+
+
+def books_scdType2_upsert(spark):
+  spark.sql(f"""
+            MERGE INTO bookstore.silver.books dt
+            USING (
+              SELECT NULL AS merge_key, b.*
+              FROM bookstore.bronze.books b
+              WHERE b.insert_ts > (
+                SELECT last_processed_ts
+                FROM workspace.default.bronze_to_silver_last_processed
+                WHERE topic = 'books'
+                )lp
+              UNION ALL
+              SELECT b.book_id AS merge_key, b.*
+              FROM bookstore.bronze.books b
+              INNER JOIN bookstore.silver.books t
+              ON t.book_id = b.book_id
+              AND t.isActive = 'Y'
+              AND t.start_date <> b.updated
+            )st
+            ON dt.book_id = st.merge_key
+
+            WHEN MATCHED AND dt.isActive = 'Y' AND dt.start_date <> st.updated THEN
+              UPDATE SET
+              isActive = 'N',
+              end_date = st.updated
+
+            WHEN NOT MATCHED THEN
+              INSERT (book_id, title, author, price, isActive, start_date, end_date)
+              VALUES (st.book_id, st.title, st.author, st.price, 'Y', st.updated, NULL);
+            
+            #update tracker
+            UPDATE workspace.default.bronze_to_silver_last_processed dt
+            SET last_processed_ts = (
+              SELECT max(insert_ts) AS max_insert_ts
+              FROM bookstore.bronze.books
+            )st
+            WHERE topic = 'books'
+
+            """)
+
+  latest_version = spark.sql(f"""
+                           select max(version) 
+                           from (describe history bookstore.bronze.books) t
+                           where operation = 'STREAMING UPDATE'
+                           """).collect()[0][0]
+  tbl_version = latest_version
+  display(spark.sql(f"""
+                    select * except (_change_type,_commit_version,_commit_timestamp) 
+                    from table_changes('bookstore.bronze.books',{tbl_version},{tbl_version})
+                    """))

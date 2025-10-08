@@ -255,7 +255,7 @@ def process_bronze_orders():
 # COMMAND ----------
 
 # DBTITLE 1,SILVER - books (SCD Type2 Upsert)
-def process_silver_books():  
+def process_silver_books():
   query = (
     spark.readStream
     .table(tbl_bronze_books)

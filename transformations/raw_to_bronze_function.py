@@ -17,6 +17,55 @@ def raw_feed(spark,path_,schema_):
             )
     )
 
+#------------------------------------------------------------
+
+def parse_value_to_row(value,schema):
+  df = spark.createDataFrame([{"value":json.dumps(value)}])
+  parsed_df = df\
+  .select(F.from_json(F.col("value"),schema).alias("parsed"))\
+  .select("parsed.*")
+  return parsed_df.collect()[0]
+
+def process_feed():
+  feed = spark.sql(f"""
+                   select *
+                   from bookstore.bronze.feeds
+                    where insert_ts > (
+                        select max(insert_ts)
+                        from bookstore.silver.books
+                      )
+                   """)
+  
+  insert_ts = F.from_utc_timestamp(F.current_timestamp(),'Asia/Kolkata')
+
+  topic_map = {
+    'books': ('bookstore.silver.books',schema_books)
+    ,'customers': ('bookstore.silver.customers',schema_customers)
+    ,'orders': ('bookstore.silver.orders',schema_orders)
+  }
+
+  for row in feed.collect():
+      topic = row['topic']
+    
+      if topic in topic_map:
+        value = row['value']
+        table,schema = topic_map[topic]
+        parsed = parse_value_to_row(value,schema)
+        row_dict = row.asDict()
+        row_dict.pop('topic',None)
+        row_dict.pop('value',None)
+        merged_dict = {**parsed_row.asDict(),row_dict}
+        row_updated = Row(**merged_dict)        
+        row_updated.write.format('delta').mode('append').saveAsTable(table)
+
+      else:
+          quarantine = spark.createDataFrame([row.asDict()])
+          quarantine
+          .write
+          .format('delta')
+          .mode('append')
+          .saveAsTable('bookstore.bronze.quarantines')
+
 def topics_feed(feed,name_,schema_):
     return (
         feed
@@ -26,10 +75,11 @@ def topics_feed(feed,name_,schema_):
     )
 
 def books_scdType2_upsert(spark):
-  latest_feed = spark.sql(f"""
-                          SELECT *
-                          FROM bookstore.bronze.books
-                          """)
+  spark.sql(f"""
+            SELECT *
+            FROM bookstore.bronze.feeds
+            WHERE
+            """).createOrReplaceTempView('latest_feed')
 
   spark.sql(f"""
             MERGE INTO bookstore.silver.books dt
@@ -54,6 +104,5 @@ def books_scdType2_upsert(spark):
             WHEN NOT MATCHED THEN
               INSERT (book_id, title, author, price, isActive, start_date, end_date)
               VALUES (st.book_id, st.title, st.author, st.price, 'Y', st.updated, NULL);
-
             """)
 

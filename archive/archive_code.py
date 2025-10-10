@@ -753,6 +753,11 @@ def books_scdType2_upsert(spark):
 
             """)
 
+describe history bookstore.bronze.books;
+select * from table_changes('bookstore.bronze.books',1,2);
+SHOW TBLPROPERTIES bookstore.bronze.books;
+select * from bookstore.bronze.books;
+
   latest_version = spark.sql(f"""
                            select max(version) 
                            from (describe history bookstore.bronze.books) t

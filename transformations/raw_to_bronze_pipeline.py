@@ -40,13 +40,3 @@ def fn_customers():
           ,table_properties={"delta.enableChangeDataFeed": "true"})
 def fn_orders():
     return topics_feed(feed=spark.readStream.table('feed'),name_=topic_orders,schema_=schema_orders)
-
-
-
-"""
-from raw_to_bronze_input import (
-    path_feed,
-    schema_feed,
-    )
-
-"""

@@ -1,0 +1,1 @@
+books_scdType2_upsert(spark=spark)

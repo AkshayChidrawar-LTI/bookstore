@@ -78,8 +78,8 @@ def ingest_data(dbutils,source_dir,target_dir,prefix):
     else:
         max_index = 0
     next_index = str(max_index + 1).zfill(2)
-    source_file = f"{source_dir}/{prefix}_{next_index}.json"
-    target_file = f"{target_dir}/{prefix}_{next_index}.json"
+    source_file = f"{source_dir}{prefix}_{next_index}.json"
+    target_file = f"{target_dir}{prefix}_{next_index}.json"
     dbutils.fs.cp(source_file,target_file)
 
 def delete_file(dbutils,file_name):

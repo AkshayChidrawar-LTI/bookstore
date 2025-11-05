@@ -1,3 +1,0 @@
-from functions import books_scdType2_upsert
-
-books_scdType2_upsert(spark=spark)

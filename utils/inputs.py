@@ -2,14 +2,18 @@ from pyspark.sql.types import StructType,StructField,StringType,DoubleType,Times
 
 path_feeds = 's3://bookstorerawdata/rawfeed/'
 
+topic_books = 'books'
+topic_customers = 'customers'
+topic_orders = 'orders'
+
 tbl_bronze_feeds = 'bookstore.bronze.feeds'
 tbl_bronze_books = 'bookstore.bronze.books'
 tbl_bronze_customers = 'bookstore.bronze.customers'
 tbl_bronze_orders = 'bookstore.bronze.orders'
 
-topic_books = 'books'
-topic_customers = 'customers'
-topic_orders = 'orders'
+tbl_silver_books = 'bookstore.silver.books'
+tbl_silver_customers = 'bookstore.silver.customers'
+tbl_silver_orders = 'bookstore.silver.orders'
 
 schema_feeds = StructType([
     StructField('key',BinaryType())

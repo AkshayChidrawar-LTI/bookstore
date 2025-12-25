@@ -83,4 +83,6 @@ def ingest_data(dbutils,source_dir,target_dir,prefix):
     dbutils.fs.cp(source_file,target_file)
 
 def clear_contents(dbutils,path):
-    dbutils.fs.rm(path,recurse=True)
+    items = dbutils.fs.ls(path)
+    for i in items:
+        dbutils.fs.rm(i.path,recurse=True)

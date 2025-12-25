@@ -82,5 +82,5 @@ def ingest_data(dbutils,source_dir,target_dir,prefix):
     target_file = f"{target_dir}{prefix}_{next_index}.json"
     dbutils.fs.cp(source_file,target_file)
 
-def delete_file(dbutils,file_name):
-    dbutils.fs.rm(file_name)
+def clear_contents(dbutils,path):
+    dbutils.fs.rm(path,recurse=True)

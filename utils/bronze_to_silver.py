@@ -1,4 +1,3 @@
-
 from pyspark import pipelines as dp
 
 from utils.functions import raw_feed,topics_feed
@@ -16,7 +15,7 @@ dp.create_streaming_table(name=tbl_silver_books,table_properties={"delta.enableC
 
 @dp.view(name='vw_books')
 def fn_read_books():
-    return topics_feed(feed=spark.readStream.table(tbl_bronze_books))
+    return spark.readStream.table(tbl_bronze_books)
 
 dp.create_auto_cdc_flow(
     source='vw_books'
@@ -31,7 +30,7 @@ dp.create_streaming_table(name=tbl_silver_customers,table_properties={"delta.ena
 
 @dp.view(name='vw_customers')
 def fn_get_customers():
-    return topics_feed(feed=spark.readStream.table(tbl_bronze_customers))
+    return spark.readStream.table(tbl_bronze_customers)
 
 dp.create_auto_cdc_flow(
     source='vw_customers'
